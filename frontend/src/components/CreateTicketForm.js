@@ -19,7 +19,7 @@ function CreateTicketForm() {
 
   // Charger les utilisateurs depuis la base de données
   useEffect(() => {
-    fetch('http://localhost:5000/api/users') // adapte cette URL à ton backend
+    fetch('http://localhost:3001/api/users') // adapte cette URL à ton backend
       .then(res => res.json())
       .then(data => {
         const formatted = data.map(user => ({
@@ -35,7 +35,7 @@ function CreateTicketForm() {
     event.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:5000/api/tickets', {
+      const response = await fetch('http://localhost:3001/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -6,7 +6,7 @@ const connectDB = async () => {
     // Configuration de connexion avec valeurs par défaut sécurisées
     const couchDbUrl = process.env.COUCHDB_URL || 'http://localhost:5984';
     const couchDbUsername = process.env.COUCHDB_USERNAME || 'admin';
-    const couchDbPassword = process.env.COUCHDB_PASSWORD || 'password';
+    const couchDbPassword = process.env.COUCHDB_PASSWORD || '12345';
 
     // Construction sécurisée de l'URL de connexion
     const urlObj = new URL(couchDbUrl);

@@ -13,6 +13,13 @@ class ClientAdapter {
       const { connection, clients } = await dbConfig.connectDB();
       this.connection = connection;
       this.db = clients;
+  
+      // Créer un index sur le champ 'type' si non existant
+      await this.db.createIndex({
+        index: { fields: ['type'] },
+        name: 'type-index',
+        type: 'json'
+      });
     }
   }
 

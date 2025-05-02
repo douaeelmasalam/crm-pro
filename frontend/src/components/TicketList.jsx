@@ -20,7 +20,7 @@ function TicketList() {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/tickets');
+      const response = await fetch('http://localhost:3001/api/tickets');
       if (!response.ok) throw new Error(`Error: ${response.status}`);
       const data = await response.json();
       setTickets(data);
@@ -34,7 +34,7 @@ function TicketList() {
   const deleteTicket = async (id) => {
     if (!window.confirm("Confirmer la suppression de ce ticket ?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/tickets/${id}`, { method: 'DELETE' });
+      const res = await fetch(`http://localhost:3001/api/tickets/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Erreur de suppression');
       setTickets(tickets.filter(ticket => ticket._id !== id));
       if (selectedTicket && selectedTicket._id === id) {
@@ -47,7 +47,7 @@ function TicketList() {
 
   const openTicketDetail = async (ticket) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tickets/${ticket._id}`);
+      const response = await fetch(`http://localhost:3001/api/tickets/${ticket._id}`);
       if (!response.ok) throw new Error(`Error: ${response.status}`);
       const detailedTicket = await response.json();
       setSelectedTicket(detailedTicket);
@@ -79,7 +79,7 @@ function TicketList() {
   const saveTicketChanges = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://localhost:5000/api/tickets/${selectedTicket._id}`, {
+      const response = await fetch(`http://localhost:3001/api/tickets/${selectedTicket._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

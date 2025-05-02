@@ -18,7 +18,7 @@ function App() {
 
   useEffect(() => {
     if (isLoggedIn && userRole === "agent") {
-      fetch("http://localhost:3000/api/dashboard")
+      fetch("http://localhost:3001/api/dashboard")
         .then((response) => response.json())
         .then((data) => setMessage(data.message))
         .catch((error) => console.error("Erreur lors de la récupération du message:", error));

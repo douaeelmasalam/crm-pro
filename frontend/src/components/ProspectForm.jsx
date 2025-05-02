@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../styles/ProspectForm.css';
 import axios from 'axios'; // Assurez-vous d'installer axios: npm install axios
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:3001/api';
 
 const ProspectForm = ({ onProspectUpdated }) => {
   // Liste de prospects

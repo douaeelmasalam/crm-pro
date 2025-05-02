@@ -1,4 +1,5 @@
 const db = require('../config/db'); // Connexion à CouchDB
+const nano = require('nano')('http://localhost:5984');
 
 // Créer un ticket
 exports.createTicket = async (req, res) => {
@@ -23,13 +24,14 @@ exports.createTicket = async (req, res) => {
 };
 
 // Obtenir tous les tickets
+
 exports.getAllTickets = async (req, res) => {
   try {
-    const tickets = await db.find({ selector: {} }); // Récupérer tous les tickets
-    res.status(200).json(tickets.docs);
-  } catch (error) {
-    console.error('Erreur lors de la récupération des tickets:', error);
-    res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
+    const result = await db.find({ selector: {} }); // OU utilisez db.view('design_doc', 'view_name') si vous n’avez pas l’API _find activée
+    res.status(200).json(result.docs);
+  } catch (err) {
+    console.error('Erreur lors de la récupération des tickets:', err);
+    res.status(500).json({ error: 'Erreur lors de la récupération des tickets' });
   }
 };
 

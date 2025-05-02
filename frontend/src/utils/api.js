@@ -1,21 +1,21 @@
-// Fonction pour gérer les appels API de login
 export const loginUser = async (email, password) => {
-    try {
-      const response = await fetch('http://localhost:5000/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+  try {
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
       });
       
-      if (response.ok) {
-        return await response.json();
-      } else {
-        const errorText = await response.text();
-        throw new Error(errorText);
+      if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Échec de la connexion');
       }
-    } catch (error) {
+      
+      return await response.json();
+  } catch (error) {
+      console.error('Erreur lors de la connexion:', error);
       throw error;
-    }
-  };
+  }
+};

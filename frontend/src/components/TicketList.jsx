@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import '../styles/TicketList.css';
 
 function TicketList() {
@@ -12,7 +11,6 @@ function TicketList() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState({});
-  const navigate = useNavigate();
   
 
   useEffect(() => {

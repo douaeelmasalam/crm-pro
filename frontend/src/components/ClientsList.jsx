@@ -164,6 +164,7 @@ if (searchTerm) {
   // Soumission du formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Submitting form data:', formData);
     
     try {
       setLoading(true);

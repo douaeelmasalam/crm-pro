@@ -1,73 +1,72 @@
+// services/api.js
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-
+// Configuration d'axios avec une URL de base
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Basic ' + btoa('admin:12345') // Ou utilisez un JWT
+    'Content-Type': 'application/json'
   }
 });
 
-// Client API calls
+// API pour les clients
 export const clientAPI = {
-  // Get all clients
   getClients: async () => {
     try {
       const response = await api.get('/clients');
       return response.data;
     } catch (error) {
-      console.error("Erreur getClients:", error.response?.data || error.message);
+      console.error('Error fetching clients:', error);
       throw error;
     }
   },
-
-  // Get client by ID
-  getClient: async (id) => {
+  
+  getClientById: async (id) => {
     try {
       const response = await api.get(`/clients/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Erreur getClient:", error.response?.data || error.message);
+      console.error(`Error fetching client ${id}:`, error);
       throw error;
     }
   },
-
-  // Create new client
+  
   createClient: async (clientData) => {
     try {
-      console.log("🔍 Données envoyées pour création :", clientData);
       const response = await api.post('/clients', clientData);
       return response.data;
     } catch (error) {
-      console.error("❌ Erreur createClient:", error.response?.data || error.message);
+      console.error('Error creating client:', error);
       throw error;
     }
   },
-
-  // Update client
+  
   updateClient: async (id, clientData) => {
     try {
-      console.log("🔄 Mise à jour client ID", id, "avec :", clientData);
       const response = await api.put(`/clients/${id}`, clientData);
       return response.data;
     } catch (error) {
-      console.error("❌ Erreur updateClient:", error.response?.data || error.message);
+      console.error(`Error updating client ${id}:`, error);
       throw error;
     }
   },
-
-  // Delete client
+  
   deleteClient: async (id) => {
     try {
       const response = await api.delete(`/clients/${id}`);
       return response.data;
     } catch (error) {
-      console.error("❌ Erreur deleteClient:", error.response?.data || error.message);
+      console.error(`Error deleting client ${id}:`, error);
       throw error;
     }
   }
+};
+
+// API pour les prospects
+export const prospectAPI = {
+  // Méthodes similaires pour les prospects
+  // ...
 };
 
 export default api;

@@ -1,107 +1,114 @@
+// routes/user.js - Routes utilisateur corrigées
 const express = require('express');
-const bcrypt = require('bcrypt');
-const User = require('../Models/User');
 const router = express.Router();
 
-// ✅ Créer un utilisateur
-router.post('/create-user', async (req, res) => {
-  const { name, email, password, role } = req.body;
-
-  if (!name || !email || !password || !role) {
-    return res.status(400).json({ message: 'Tous les champs sont requis.' });
-  }
-
+// GET tous les utilisateurs
+router.get('/', async (req, res) => {
   try {
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Cet utilisateur existe déjà' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = new User({ name, email, password: hashedPassword, role });
-    await newUser.save();
-
-    res.status(201).json({ message: 'Utilisateur créé avec succès' });
+    const users = await req.app.locals.adapters.userAdapter.findAll();
+    res.json(users);
   } catch (error) {
-    console.error('Erreur:', error);
+    console.error('Erreur lors de la récupération des utilisateurs:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des utilisateurs' });
+  }
+});
+
+// GET utilisateur par ID
+router.get('/:id', async (req, res) => {
+  try {
+    const user = await req.app.locals.adapters.userAdapter.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+    
+    // Ne pas renvoyer le mot de passe
+    const { password, ...userSansPassword } = user;
+    res.json(userSansPassword);
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'utilisateur:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération de l\'utilisateur' });
+  }
+});
+
+// POST créer nouvel utilisateur
+router.post('/', async (req, res) => {
+  try {
+    const { name, email, password, roles, role } = req.body;
+    
+    // Validation de base
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Nom, email et mot de passe sont requis' });
+    }
+    
+    // Vérifier si l'email existe déjà
+    const existingUser = await req.app.locals.adapters.userAdapter.findByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ message: 'Cet email est déjà utilisé' });
+    }
+    
+    // Préparer les données utilisateur
+    const userData = {
+      name,
+      email,
+      password,
+      role: role || 'user',
+      roles: roles || ['user'],
+      type: 'user'
+    };
+    
+    // Créer l'utilisateur
+    const createdUser = await req.app.locals.adapters.userAdapter.create(userData);
+    
+    // Ne pas renvoyer le mot de passe
+    const { password: _, ...userSansPassword } = createdUser;
+    
+    res.status(201).json(userSansPassword);
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'utilisateur:', error);
     res.status(500).json({ message: 'Erreur lors de la création de l\'utilisateur' });
   }
 });
 
-// ✅ Supprimer un utilisateur
-router.delete('/:id', async (req, res) => {
-  try {
-    const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
-    }
-    res.json({ message: 'Utilisateur supprimé avec succès' });
-  } catch (err) {
-    console.error('Erreur lors de la suppression:', err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-});
-
-// ✅ Obtenir tous les utilisateurs (sans mot de passe)
-router.get('/', async (req, res) => {
-  try {
-    const users = await User.find().select('-password');
-    res.json(users);
-  } catch (err) {
-    console.error('Erreur lors du fetch des utilisateurs:', err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-});
-
-// ✅ Obtenir un utilisateur par ID (exclut le mot de passe)
-router.get('/:id', async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
-    }
-    res.json(user);
-  } catch (err) {
-    console.error('Erreur lors de la récupération de l\'utilisateur:', err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-});
-
-// ✅ Mettre à jour un utilisateur par ID (inclut le mot de passe si présent)
+// PUT mettre à jour utilisateur
 router.put('/:id', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
-    const updateData = { name, email, role };
-
-    if (password) {
-      updateData.password = await bcrypt.hash(password, 10);
-    }
-
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    ).select('-password');
-
-    if (!user) {
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
-    }
-
-    res.json({ message: 'Utilisateur mis à jour avec succès', user });
-  } catch (err) {
-    console.error('Erreur lors de la mise à jour de l\'utilisateur:', err);
-    res.status(500).json({ message: 'Erreur serveur' });
+    const updateData = req.body;
+    
+    // Ne pas permettre la modification de certains champs critiques
+    delete updateData._id;
+    delete updateData._rev;
+    
+    const updatedUser = await req.app.locals.adapters.userAdapter.update(req.params.id, updateData);
+    
+    // Ne pas renvoyer le mot de passe
+    const { password, ...userSansPassword } = updatedUser;
+    
+    res.json(userSansPassword);
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour de l\'utilisateur' });
   }
 });
 
-// ✅ Middleware pour l'accès admin (optionnel pour protéger des routes)
-const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
-    next();
-  } else {
-    res.status(403).json({ message: 'Accès refusé' });
+// DELETE supprimer utilisateur
+router.delete('/:id', async (req, res) => {
+  try {
+    // Récupérer l'utilisateur pour obtenir la révision
+    const user = await req.app.locals.adapters.userAdapter.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+    
+    // Supprimer l'utilisateur avec son ID et sa révision
+    await req.app.locals.adapters.userAdapter.delete(req.params.id, user._rev);
+    
+    res.json({ message: 'Utilisateur supprimé avec succès' });
+  } catch (error) {
+    console.error('Erreur lors de la suppression de l\'utilisateur:', error);
+    res.status(500).json({ message: 'Erreur lors de la suppression de l\'utilisateur' });
   }
-};
+});
 
 module.exports = router;

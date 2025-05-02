@@ -1,184 +1,162 @@
-const Ticket = require('../Models/Ticket');
+const db = require('../config/db'); // Connexion à CouchDB
 
-// Create a new ticket
+// Créer un ticket
 exports.createTicket = async (req, res) => {
   try {
     const { title, description, priority, clientConcerned, assignedUser, status } = req.body;
     
-    const newTicket = new Ticket({
+    const newTicket = {
       title,
       description,
       priority,
       clientConcerned,
       assignedUsers: [assignedUser], // Stocké comme tableau
       status: status || 'open',
-    });
-        
-    const savedTicket = await newTicket.save();
-    res.status(201).json({ message: 'Ticket créé avec succès', ticket: savedTicket });
+    };
+
+    const response = await db.insert(newTicket); // Insérer le ticket dans CouchDB
+    res.status(201).json({ message: 'Ticket créé avec succès', ticketId: response.id });
   } catch (error) {
     console.error('Erreur lors de la création du ticket:', error);
     res.status(500).json({ message: 'Erreur lors de la création du ticket.' });
   }
 };
 
-// Get all tickets
+// Obtenir tous les tickets
 exports.getAllTickets = async (req, res) => {
   try {
-    const tickets = await Ticket.find().sort({ createdAt: -1 }); // Sort by creation date, newest first
-    res.status(200).json(tickets);
+    const tickets = await db.find({ selector: {} }); // Récupérer tous les tickets
+    res.status(200).json(tickets.docs);
   } catch (error) {
-    console.error('Error fetching tickets:', error);
-    res.status(500).json({ message: 'Error fetching tickets' });
+    console.error('Erreur lors de la récupération des tickets:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
   }
 };
 
-// Get a single ticket by ID
+// Obtenir un ticket par ID
 exports.getTicketById = async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id);
+    const ticket = await db.get(req.params.id);
     
     if (!ticket) {
-      return res.status(404).json({ message: 'Ticket not found' });
+      return res.status(404).json({ message: 'Ticket non trouvé' });
     }
     
     res.status(200).json(ticket);
   } catch (error) {
-    console.error('Error fetching ticket:', error);
-    res.status(500).json({ message: 'Error fetching ticket' });
+    console.error('Erreur lors de la récupération du ticket:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération du ticket' });
   }
 };
 
-// Update a ticket
+// Mettre à jour un ticket
 exports.updateTicket = async (req, res) => {
   try {
     const { title, description, priority, clientConcerned, assignedUser, status } = req.body;
+    const ticket = await db.get(req.params.id);
     
-    const updatedTicket = await Ticket.findByIdAndUpdate(
-      req.params.id,
-      {
-        title,
-        description,
-        priority,
-        clientConcerned,
-        assignedUser,
-        status,
-        updatedAt: Date.now()
-      },
-      { new: true } // Return the updated document
-    );
+    const updatedTicket = {
+      ...ticket,
+      title,
+      description,
+      priority,
+      clientConcerned,
+      assignedUser,
+      status,
+      updatedAt: Date.now(),
+    };
     
-    if (!updatedTicket) {
-      return res.status(404).json({ message: 'Ticket not found' });
-    }
-    
-    res.status(200).json({ message: 'Ticket updated successfully', ticket: updatedTicket });
+    const response = await db.insert(updatedTicket); // Insérer à nouveau le ticket mis à jour
+    res.status(200).json({ message: 'Ticket mis à jour avec succès', ticket: response });
   } catch (error) {
-    console.error('Error updating ticket:', error);
-    res.status(500).json({ message: 'Error updating ticket' });
+    console.error('Erreur lors de la mise à jour du ticket:', error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour du ticket' });
   }
 };
 
-// Delete a ticket
+// Supprimer un ticket
 exports.deleteTicket = async (req, res) => {
   try {
-    const deletedTicket = await Ticket.findByIdAndDelete(req.params.id);
-    
-    if (!deletedTicket) {
-      return res.status(404).json({ message: 'Ticket not found' });
-    }
-    
-    res.status(200).json({ message: 'Ticket deleted successfully' });
+    const ticket = await db.get(req.params.id);
+    const response = await db.destroy(req.params.id, ticket._rev); // Supprimer le ticket de CouchDB
+    res.status(200).json({ message: 'Ticket supprimé avec succès' });
   } catch (error) {
-    console.error('Error deleting ticket:', error);
-    res.status(500).json({ message: 'Error deleting ticket' });
+    console.error('Erreur lors de la suppression du ticket:', error);
+    res.status(500).json({ message: 'Erreur lors de la suppression du ticket' });
   }
 };
 
-// Get tickets by status
+// Filtrer les tickets par statut
 exports.getTicketsByStatus = async (req, res) => {
   try {
     const { status } = req.params;
-    
-    // Validate status
-    const validStatuses = ['open', 'in-progress', 'closed'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: 'Invalid status parameter' });
-    }
-    
-    const tickets = await Ticket.find({ status }).sort({ createdAt: -1 });
-    res.status(200).json(tickets);
+    const tickets = await db.find({ selector: { status } }); // Filtrer par statut
+    res.status(200).json(tickets.docs);
   } catch (error) {
-    console.error('Error fetching tickets by status:', error);
-    res.status(500).json({ message: 'Error fetching tickets' });
+    console.error('Erreur lors de la récupération des tickets par statut:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
   }
 };
 
-// Get tickets by priority
+// Filtrer les tickets par priorité
 exports.getTicketsByPriority = async (req, res) => {
   try {
     const { priority } = req.params;
-    
-    // Validate priority
-    const validPriorities = ['faible', 'moyenne', 'élevée', 'critique'];
-    if (!validPriorities.includes(priority)) {
-      return res.status(400).json({ message: 'Invalid priority parameter' });
-    }
-    
-    const tickets = await Ticket.find({ priority }).sort({ createdAt: -1 });
-    res.status(200).json(tickets);
+    const tickets = await db.find({ selector: { priority } }); // Filtrer par priorité
+    res.status(200).json(tickets.docs);
   } catch (error) {
-    console.error('Error fetching tickets by priority:', error);
-    res.status(500).json({ message: 'Error fetching tickets' });
+    console.error('Erreur lors de la récupération des tickets par priorité:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
   }
 };
 
-// Get tickets assigned to a specific user
+// Filtrer les tickets par utilisateur assigné
 exports.getTicketsByAssignee = async (req, res) => {
   try {
     const { username } = req.params;
-    
-    const tickets = await Ticket.find({ assignedUser: username }).sort({ createdAt: -1 });
-    res.status(200).json(tickets);
+    const tickets = await db.find({ selector: { assignedUsers: username } }); // Filtrer par utilisateur assigné
+    res.status(200).json(tickets.docs);
   } catch (error) {
-    console.error('Error fetching tickets by assignee:', error);
-    res.status(500).json({ message: 'Error fetching tickets' });
+    console.error('Erreur lors de la récupération des tickets par assigné:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
   }
 };
 
-// Get tickets for a specific client
+// Filtrer les tickets par client
 exports.getTicketsByClient = async (req, res) => {
   try {
     const { client } = req.params;
-    
-    const tickets = await Ticket.find({ clientConcerned: client }).sort({ createdAt: -1 });
-    res.status(200).json(tickets);
+    const tickets = await db.find({ selector: { clientConcerned: client } }); // Filtrer par client
+    res.status(200).json(tickets.docs);
   } catch (error) {
-    console.error('Error fetching tickets by client:', error);
-    res.status(500).json({ message: 'Error fetching tickets' });
+    console.error('Erreur lors de la récupération des tickets par client:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
   }
 };
 
-// Search tickets
+// Recherche des tickets
 exports.searchTickets = async (req, res) => {
   try {
     const { query } = req.query;
     
     if (!query) {
-      return res.status(400).json({ message: 'Search query is required' });
+      return res.status(400).json({ message: 'La requête de recherche est requise' });
     }
-    
-    const tickets = await Ticket.find({
-      $or: [
-        { title: { $regex: query, $options: 'i' } },
-        { description: { $regex: query, $options: 'i' } },
-        { clientConcerned: { $regex: query, $options: 'i' } }
-      ]
-    }).sort({ createdAt: -1 });
-    
-    res.status(200).json(tickets);
+
+    // Recherche avec regex
+    const tickets = await db.find({
+      selector: {
+        $or: [
+          { title: { $regex: query, $options: 'i' } },
+          { description: { $regex: query, $options: 'i' } },
+          { clientConcerned: { $regex: query, $options: 'i' } }
+        ]
+      }
+    });
+
+    res.status(200).json(tickets.docs);
   } catch (error) {
-    console.error('Error searching tickets:', error);
-    res.status(500).json({ message: 'Error searching tickets' });
+    console.error('Erreur lors de la recherche des tickets:', error);
+    res.status(500).json({ message: 'Erreur lors de la recherche des tickets' });
   }
 };

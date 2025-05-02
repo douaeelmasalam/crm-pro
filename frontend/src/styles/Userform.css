@@ -32,7 +32,7 @@
   
   /* Effet hover pour les champs */
   .user-form input:focus, .user-form select:focus {
-    border-color: #007bff;
+    border-color: #eaa417;
     outline: none;
   }
   
@@ -50,7 +50,7 @@
   
   /* Effet hover sur le bouton */
   .user-form button:hover {
-    background-color: #0056b3;
+    background-color: #0bea1e;
   }
   
   /* 🌟 Animation à l'apparition du formulaire */

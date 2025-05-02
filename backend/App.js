@@ -1,38 +1,36 @@
+// App.js
 const express = require('express');
 const cors = require('cors');
-const authRoutes = require('./Routes/authRoutes');
-const userRoutes = require('./Routes/user');
-const prospectRoutes = require('./Routes/prospectRoutes');
-const ticketRoutes = require('./Routes/ticket');
-const errorHandler = require('./Middleware/errorHandler');
+const bodyParser = require('body-parser');
 
 const app = express();
 
-// Middleware CORS
+// Configuration CORS pour autoriser les requêtes de votre frontend
 app.use(cors({
-  origin: ['http://localhost:3000'], // Ajoute ici d'autres URLs frontend si besoin
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Middleware pour parser le JSON
-app.use(express.json());
 
-// Routes API
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/prospects', prospectRoutes);
-app.use('/api/tickets', ticketRoutes);
+// Parser pour JSON
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// Exemple de route tableau de bord
-app.get('/api/dashboard', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'Bienvenue sur le tableau de bord agent'
-  });
+// Middleware pour gérer les erreurs CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Préflight pour les requêtes OPTIONS
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
 });
-
-// Gestion des erreurs globales
-app.use(errorHandler);
 
 module.exports = app;

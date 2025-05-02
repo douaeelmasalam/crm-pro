@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import PouchDB from 'pouchdb';
 import '../styles/AdminDashboard.css';
 import '../styles/Userform.css';
 import CreateUserForm from '../components/CreateUserForm';
@@ -9,14 +9,31 @@ import ProspectForm from '../components/ProspectForm';
 import CombinedClientsList from '../components/ClientsList';
 import CreateTicketForm from '../components/CreateTicketForm';
 import TicketList from '../components/TicketList';
-const API_URL = 'http://localhost:5000/api';
+
+// CouchDB connection setup
+const remoteUsersDB = new PouchDB('http://localhost:5984/users');
+const remoteTicketsDB = new PouchDB('http://localhost:5984/tickets');
+const remoteClientsDB = new PouchDB('http://localhost:5984/clients');
+const remoteProspectsDB = new PouchDB('http://localhost:5984/prospects');
+
+// Local PouchDB instances for offline capabilities
+const localUsersDB = new PouchDB('users');
+const localTicketsDB = new PouchDB('tickets');
+const localClientsDB = new PouchDB('clients');
+const localProspectsDB = new PouchDB('prospects');
+
+// Set up sync
+localUsersDB.sync(remoteUsersDB, { live: true, retry: true });
+localTicketsDB.sync(remoteTicketsDB, { live: true, retry: true });
+localClientsDB.sync(remoteClientsDB, { live: true, retry: true });
+localProspectsDB.sync(remoteProspectsDB, { live: true, retry: true });
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [stats, setStats] = useState({
-    users: 42,
-    tickets: 15,
-    openTickets: 23,
+    users: 0,
+    tickets: 0,
+    openTickets: 0,
     clients: 0,
     prospects: 0
   });
@@ -36,14 +53,34 @@ const AdminDashboard = () => {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const prospectsRes = await axios.get(`${API_URL}/prospects`);
-      const clientsRes = await axios.get(`${API_URL}/clients`);
+      // Get users count
+      const usersResult = await localUsersDB.allDocs();
+      const usersCount = usersResult.total_rows;
       
-      setStats(prevStats => ({
-        ...prevStats,
-        prospects: prospectsRes.data.length,
-        clients: clientsRes.data.length
-      }));
+      // Get tickets and count open ones
+      const ticketsResult = await localTicketsDB.allDocs({
+        include_docs: true
+      });
+      const ticketsCount = ticketsResult.total_rows;
+      const openTicketsCount = ticketsResult.rows.filter(row => 
+        row.doc && row.doc.status === 'open'
+      ).length;
+      
+      // Get clients count
+      const clientsResult = await localClientsDB.allDocs();
+      const clientsCount = clientsResult.total_rows;
+      
+      // Get prospects count
+      const prospectsResult = await localProspectsDB.allDocs();
+      const prospectsCount = prospectsResult.total_rows;
+      
+      setStats({
+        users: usersCount,
+        tickets: ticketsCount,
+        openTickets: openTicketsCount,
+        clients: clientsCount,
+        prospects: prospectsCount
+      });
       
     } catch (err) {
       console.error('Erreur lors du chargement des statistiques:', err);
@@ -57,6 +94,7 @@ const AdminDashboard = () => {
   };
 
   const handleUserUpdated = () => {
+    fetchStats();
     setActiveSection('users');
     navigate('/admin/dashboard', { state: { activeSection: 'users' } });
   };
@@ -69,6 +107,11 @@ const AdminDashboard = () => {
   const handleClientUpdated = () => {
     fetchStats();
     setActiveSection('clients');
+  };
+
+  const handleTicketUpdated = () => {
+    fetchStats();
+    setActiveSection('tickets');
   };
 
   const renderSection = () => {
@@ -107,7 +150,10 @@ const AdminDashboard = () => {
         return (
           <div>
             <h2>User Data</h2>
-            <UserList onEditUser={handleEditUser} />
+            <UserList 
+              db={localUsersDB} 
+              onEditUser={handleEditUser} 
+            />
           </div>
         );
 
@@ -115,29 +161,43 @@ const AdminDashboard = () => {
         return (
           <div>
             <h2>Create User</h2>
-            <CreateUserForm onUserUpdated={handleUserUpdated} />
+            <CreateUserForm 
+              db={localUsersDB} 
+              onUserUpdated={handleUserUpdated} 
+            />
           </div>
         );
 
-        case 'tickets':
-          return (
-            <div>
-              <h2>Tickets</h2>
-              <TicketList />
-            </div>
-          );
-                case 'createTicket':
-          return (
-            <div>
-              <h2>Create Ticket</h2>
-              <CreateTicketForm />
-            </div>
-          );
+      case 'tickets':
+        return (
+          <div>
+            <h2>Tickets</h2>
+            <TicketList 
+              db={localTicketsDB} 
+              onTicketUpdated={handleTicketUpdated}
+            />
+          </div>
+        );
+                
+      case 'createTicket':
+        return (
+          <div>
+            <h2>Create Ticket</h2>
+            <CreateTicketForm 
+              db={localTicketsDB} 
+              usersDb={localUsersDB} 
+              onTicketUpdated={handleTicketUpdated}
+            />
+          </div>
+        );
 
       case 'clients':
         return (
           <div>
-            <CombinedClientsList onClientUpdated={handleClientUpdated} />
+            <CombinedClientsList 
+              db={localClientsDB} 
+              onClientUpdated={handleClientUpdated} 
+            />
           </div>
         );
 
@@ -145,7 +205,11 @@ const AdminDashboard = () => {
         return (
           <div>
             <h2>Gestion des Prospects</h2>
-            <ProspectForm onProspectUpdated={handleProspectUpdated} />
+            <ProspectForm 
+              db={localProspectsDB} 
+              clientsDb={localClientsDB}
+              onProspectUpdated={handleProspectUpdated} 
+            />
           </div>
         );
 
@@ -179,7 +243,10 @@ const AdminDashboard = () => {
             </li>
             <li 
               className={activeSection === 'users' ? 'active' : ''} 
-              onClick={() => setActiveSection('users')}
+              onClick={() => {
+                setActiveSection('users');
+                fetchStats();
+              }}
             >
               User Data
             </li>
@@ -191,7 +258,10 @@ const AdminDashboard = () => {
             </li>
             <li 
               className={activeSection === 'tickets' ? 'active' : ''} 
-              onClick={() => setActiveSection('tickets')}
+              onClick={() => {
+                setActiveSection('tickets');
+                fetchStats();
+              }}
             >
               Tickets
             </li>

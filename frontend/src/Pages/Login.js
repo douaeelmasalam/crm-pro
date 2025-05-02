@@ -1,41 +1,58 @@
 import { useState } from 'react';
-import styles from '../styles/Login.module.css';// Import modifié pour le module CSS
+import { useNavigate } from 'react-router-dom';
+import styles from '../styles/Login.module.css';
 
 function Login({ setIsLoggedIn, setUserRole, setMessage, message }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const navigate = useNavigate();
 
-// src/Pages/Login.js
-const handleLogin = async (e) => {
-  e.preventDefault();
-  try {
-    const response = await fetch('http://localhost:5000/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      setMessage(data.message);
-      setIsSuccess(true);
-      
-      // Ajouter un délai de 2 secondes avant la redirection
-      setTimeout(() => {
-        setUserRole(data.role);
-        setIsLoggedIn(true);
-      }, 2000);
-    } else {
-      const errorText = await response.text();
-      setMessage(errorText);
+      if (response.ok) {
+        const data = await response.json();
+        setMessage(data.message);
+        setIsSuccess(true);
+        
+        // Stockage des informations utilisateur
+        localStorage.setItem('user', JSON.stringify({
+          ...data.user,
+          isAdmin: data.isAdmin,
+          isAgent: data.isAgent
+        }));
+
+        // Ajouter un délai de 2 secondes avant la redirection
+        setTimeout(() => {
+          setUserRole(data.role);
+          setIsLoggedIn(true);
+          
+          // Redirection basée sur le rôle
+          if (data.isAdmin) {
+            navigate('/admin/dashboard');
+          } else if (data.isAgent) {
+            navigate('/agent/dashboard');
+          } else {
+            navigate('/'); // Redirection par défaut
+          }
+        }, 2000);
+      } else {
+        const errorText = await response.text();
+        setMessage(errorText);
+        setIsSuccess(false);
+      }
+    } catch (error) {
+      setMessage("Une erreur réseau est survenue");
       setIsSuccess(false);
     }
-  } catch (error) {
-    setMessage("Une erreur réseau est survenue");
-    setIsSuccess(false);
-  }
-};
+  };
 
   return (
     <div className={styles.loginContainer}>
@@ -73,7 +90,7 @@ const handleLogin = async (e) => {
             )}
 
             <div className={styles.forgotPassword}>
-            <a href="/reset-password">Mot de passe oublié ?</a>
+              <a href="/reset-password">Mot de passe oublié ?</a>
             </div>
           </form>
         </div>
